@@ -19,25 +19,63 @@ namespace RentalKendaraan.Controllers
         }
 
         // GET: Customers
-        public async Task<IActionResult> Index(string ktsd, string searchStr)
+        public async Task<IActionResult> Index(string ktsd, string searchString, string sortOrder, string currentFilter, int? pageNumber)
         {
             var ktsdList = new List<string>();
-            var ktsdQuery = from d in _context.Customers orderby d.IdGenderNavigation select d.IdGenderNavigation.NamaGender;
+            var ktsdQuery = from d in _context.Customers orderby d.IdGender select d.IdGender.ToString();
 
             ktsdList.AddRange(ktsdQuery.Distinct());
             ViewBag.ktsd = new SelectList(ktsdList);
+
             var menu = from m in _context.Customers.Include(k => k.IdGenderNavigation) select m;
 
             if (!string.IsNullOrEmpty(ktsd))
             {
-                menu = menu.Where(x => x.IdGenderNavigation.NamaGender == ktsd);
+                menu = menu.Where(x => x.IdGender.ToString() == ktsd);
             }
 
-            if (!string.IsNullOrEmpty(searchStr))
+            if (!string.IsNullOrEmpty(searchString))
             {
-                menu = menu.Where(s => s.Alamat.Contains(searchStr) || s.NamaCustomer.Contains(searchStr) || s.Nik.Contains(searchStr) || s.NoHp.Contains(searchStr));
+                menu = menu.Where(s => s.NamaCustomer.Contains(searchString) || s.Nik.Contains(searchString) || s.Alamat.Contains(searchString) || s.NoHp.Contains(searchString));
             }
-            return View(await menu.ToListAsync());
+
+
+            //membuat pagedlist
+            ViewData["CurrentSort"] = sortOrder;
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            ViewData["CurrentFilter"] = searchString;
+
+            int pageSize = 5;
+
+            //untuk sorting
+            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+            ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
+
+            switch (sortOrder)
+            {
+                case "name_desc":
+                    menu = menu.OrderByDescending(s => s.NamaCustomer);
+                    break;
+                case "Date":
+                    menu = menu.OrderBy(s => s.IdGenderNavigation.NamaGender);
+                    break;
+                case "date_desc":
+                    menu = menu.OrderByDescending(s => s.IdGenderNavigation.NamaGender);
+                    break;
+                default: //name ascending
+                    menu = menu.OrderBy(s => s.NamaCustomer);
+                    break;
+            }
+
+            return View(await PaginatedList<Customer>.CreateAsync(menu.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
 
         // GET: Customers/Details/5
@@ -59,14 +97,14 @@ namespace RentalKendaraan.Controllers
             return View(customer);
         }
 
-        // GET: Customers/Create
+        // GET: Customers1/Create
         public IActionResult Create()
         {
             ViewData["IdGender"] = new SelectList(_context.Genders, "IdGender", "IdGender");
             return View();
         }
 
-        // POST: Customers/Create
+        // POST: Customers1/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to, for 
         // more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
@@ -83,7 +121,7 @@ namespace RentalKendaraan.Controllers
             return View(customer);
         }
 
-        // GET: Customers/Edit/5
+        // GET: Customers1/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -100,7 +138,7 @@ namespace RentalKendaraan.Controllers
             return View(customer);
         }
 
-        // POST: Customers/Edit/5
+        // POST: Customers1/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to, for 
         // more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
@@ -136,7 +174,7 @@ namespace RentalKendaraan.Controllers
             return View(customer);
         }
 
-        // GET: Customers/Delete/5
+        // GET: Customers1/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -155,7 +193,7 @@ namespace RentalKendaraan.Controllers
             return View(customer);
         }
 
-        // POST: Customers/Delete/5
+        // POST: Customers1/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)

@@ -19,13 +19,14 @@ namespace RentalKendaraan.Controllers
         }
 
         // GET: Jaminans
-        public async Task<IActionResult> Index(string ktsd, string searchStr)
+        public async Task<IActionResult> Index(string ktsd, string searchString, string sortOrder, string currentFilter, int? pageNumber)
         {
             var ktsdList = new List<string>();
-            var ktsdQuery = from d in _context.Jaminans orderby d.NamaJaminan select d.NamaJaminan;
+            var ktsdQuery = from d in _context.Jaminans orderby d.NamaJaminan select d.NamaJaminan.ToString();
 
             ktsdList.AddRange(ktsdQuery.Distinct());
             ViewBag.ktsd = new SelectList(ktsdList);
+
             var menu = from m in _context.Jaminans select m;
 
             if (!string.IsNullOrEmpty(ktsd))
@@ -33,11 +34,40 @@ namespace RentalKendaraan.Controllers
                 menu = menu.Where(x => x.NamaJaminan == ktsd);
             }
 
-            if (!string.IsNullOrEmpty(searchStr))
+            if (!string.IsNullOrEmpty(searchString))
             {
-                menu = menu.Where(s => s.NamaJaminan.Contains(searchStr));
+                menu = menu.Where(s => s.NamaJaminan.Contains(searchString));
             }
-            return View(await menu.ToListAsync());
+
+            //membuat pagedlist
+            ViewData["CurrentSort"] = sortOrder;
+            if (searchString != null)
+            {
+                pageNumber = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            ViewData["CurrentFilter"] = searchString;
+
+            int pageSize = 5;
+
+            //untuk sorting
+            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
+
+            switch (sortOrder)
+            {
+                case "name_desc":
+                    menu = menu.OrderByDescending(s => s.NamaJaminan);
+                    break;
+                default: //name ascending
+                    menu = menu.OrderBy(s => s.NamaJaminan);
+                    break;
+            }
+
+            return View(await PaginatedList<Jaminan>.CreateAsync(menu.AsNoTracking(), pageNumber ?? 1, pageSize));
         }
 
         // GET: Jaminans/Details/5
